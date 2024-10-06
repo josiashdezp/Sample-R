@@ -23,7 +23,6 @@ scopus_bib <- convert2df(file = choose_bib_file(type_name = 'Scopus Bib Files', 
 wos_bib    <- convert2df(file = choose_bib_file(type_name = 'Web of Science Bib Files',type_extension = '.bib'),format = 'bibtex', dbsource = 'wos',remove.duplicates = FALSE)
 size_scopus <- nrow(scopus_bib)
 size_wos <- nrow(wos_bib)
-print(getwd())
 
 # Merge the files, clean the duplicates and verify its size now
 db_unified <- mergeDbSources(scopus_bib,wos_bib,remove.duplicated = TRUE, verbose = TRUE)
