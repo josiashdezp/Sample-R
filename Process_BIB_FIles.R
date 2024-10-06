@@ -2,32 +2,28 @@
 library(bibliometrix)
 library(openxlsx2)
 library(bibtex)
-library(RefManageR)
+library(tcltk)
 
-
-
-# Set the location of the working directory for facilitating the handling of the files
-# In case the code below does not work run first this line
- file.choose()
-# This way we reset the pointer to the Working Directory
-location <- choose.dir(default = getwd(), caption = 'Select folder')
-# Check if a valid directory was chosen
-if (!is.na(location)) {
-  setwd(location)
-} else {
-  stop("No valid directory selected. Please choose a valid directory.")
+# Function to open a file dialog and filter for a certain type of files
+choose_bib_file <- function(type_name,type_extension) {
+  
+  file_path <- tclvalue(tkgetOpenFile(filetypes = paste('{{',type_name,'} {',type_extension,'}} {{All files} *}')))
+  
+  if (nchar(file_path) > 0) {
+    return(file_path)
+  } else {
+    stop("No file selected. Please select a file with the .bib extension.")
+  }
 }
 
 
-
-
 # converting them to a bib file compatible with Bibliometrix
-# You must write here the name of the files you exported from WOS or SCOPUS
-scopus_bib <- convert2df(file = 'scopus_10570.bib',format = 'bibtex', dbsource = 'scopus',remove.duplicates = FALSE)
-wos_bib    <- convert2df(file = 'wos_merged.bib',format = 'bibtex', dbsource = 'wos',remove.duplicates = FALSE)
+# Locating the files exported from WOS or SCOPUS
+scopus_bib <- convert2df(file = choose_bib_file(type_name = 'Scopus Bib Files', type_extension = '.bib'),format = 'bibtex', dbsource = 'scopus',remove.duplicates = FALSE)
+wos_bib    <- convert2df(file = choose_bib_file(type_name = 'Web of Science Bib Files',type_extension = '.bib'),format = 'bibtex', dbsource = 'wos',remove.duplicates = FALSE)
 size_scopus <- nrow(scopus_bib)
 size_wos <- nrow(wos_bib)
-
+print(getwd())
 
 # Merge the files, clean the duplicates and verify its size now
 db_unified <- mergeDbSources(scopus_bib,wos_bib,remove.duplicated = TRUE, verbose = TRUE)
@@ -43,7 +39,7 @@ size_with_doi <- nrow(db_unified_with_doi)
 
 # Filter again to verify the records actually have the KEYWORDS in the TITLE, ABSTRACT
 # or AUTHOR KEYWORDS as it is expected. 
-#	This is the pattern I am using (“business” and “platform-based”)  OR (“digital” and “platform” and “business”)
+#	This is the pattern I am using (“business” and “platform-based”)  OR (“digital” and “platform”)
 
 # Build the pattern, in case you need it, define your own rexexp here
 pattern <- "(business.*platform-based)|(digital.*platform)"
@@ -78,7 +74,7 @@ for (i in 1:nrow(journal_df))
 size_abs_journals <- nrow(db_abs_journals)
 
 #Write to an XLSX compatible with Bibliometrix for its processing
-write_xlsx(db_abs_journals,file = paste('quantitative_analysis_',size_abs_journals,'_records.xlsx'))
+write_xlsx(db_abs_journals,file = paste0(getwd(),'/quantitative_analysis_',trim(as.character(size_abs_journals)),'_records.xlsx'),overwrite = TRUE)
 
 
 
@@ -93,7 +89,7 @@ for (i in 1:nrow(journal_df))
   db_high_rank <- rbind(db_high_rank,matching_rows)
 }
 size_high_rank <- nrow(db_high_rank)
-write_xlsx(db_high_rank,file = paste('qualitative_analysis_',size_high_rank,'_records.xlsx'))
+write_xlsx(db_high_rank,file = paste0(getwd(),'/qualitative_analysis_',trim(as.character(size_high_rank)),'_records.xlsx'),overwrite = TRUE)
 
 
 
