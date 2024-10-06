@@ -3,7 +3,7 @@ library(bibliometrix)
 library(openxlsx2)
 library(bibtex)
 library(RefManageR)
-library(dplyr)
+
 
 
 # Set the location of the working directory for facilitating the handling of the files
@@ -11,13 +11,14 @@ library(dplyr)
  file.choose()
 # This way we reset the pointer to the Working Directory
 location <- choose.dir(default = getwd(), caption = 'Select folder')
-
 # Check if a valid directory was chosen
 if (!is.na(location)) {
   setwd(location)
 } else {
   stop("No valid directory selected. Please choose a valid directory.")
 }
+
+
 
 
 # converting them to a bib file compatible with Bibliometrix
@@ -32,16 +33,19 @@ size_wos <- nrow(wos_bib)
 db_unified <- mergeDbSources(scopus_bib,wos_bib,remove.duplicated = TRUE, verbose = TRUE)
 size_unified <- nrow(db_unified)
 
+
+
 # Remove records with no DOI number
 db_unified_with_doi <- db_unified[!is.na(db_unified$DI), ]
 size_with_doi <- nrow(db_unified_with_doi)
+
+
 
 # Filter again to verify the records actually have the KEYWORDS in the TITLE, ABSTRACT
 # or AUTHOR KEYWORDS as it is expected. 
 #	This is the pattern I am using (“business” and “platform-based”)  OR (“digital” and “platform” and “business”)
 
-# Build the pattern
-# In case you need it define your own rexexp here
+# Build the pattern, in case you need it, define your own rexexp here
 pattern <- "(business.*platform-based)|(digital.*platform)"
 
 #Filter the TI, AB and DE
@@ -51,27 +55,50 @@ db_filtered <- db_unified_with_doi[
     grepl(pattern = pattern,x = db_unified_with_doi$DE, ignore.case = TRUE),]
 size_filtered <- nrow(db_filtered)
 
-#Filter by JOURNAL. Select only high rank sources from this csv list
+
+
+
+#Filter by JOURNAL NAME. Select only sources ranked in the ABS 2021 Rating from this csv list
 journal_df <- read.csv('abs_2021_journals.csv',header = TRUE,encoding = 'UTF-8') 
 
-# Transfer the records from the DataFrame to a single string with a RegEx pattern for filtering the records by SO.
-# This is the pattern to build: "journal name"|""journal name"|"journal name"|"journal name"|"journal name"
-
+# Convert each records from the DataFrame with the name of a journal into a RegEx pattern for filtering the records by SO.
+#Creating a blank copy of the db_filtered
 db_abs_journals = db_filtered[FALSE,]
+
+#Looping through the journal list to filter the db of papers against each name in the list
 for (i in 1:nrow(journal_df))
 {
   # Convert the journal name to a character string
   pattern <- as.character(journal_df[i, 1])
+  
+  # Filtering and inserting each match into the new DataFrame
   matching_rows <- db_filtered[grepl(pattern = pattern,x = db_filtered$SO, ignore.case = TRUE),]
   db_abs_journals <- rbind(db_abs_journals,matching_rows)
 }
-size_high_rank <- nrow(db_abs_journals)
+size_abs_journals <- nrow(db_abs_journals)
+
+#Write to an XLSX compatible with Bibliometrix for its processing
+write_xlsx(db_abs_journals,file = paste('quantitative_analysis_',size_abs_journals,'_records.xlsx'))
 
 
-#Write to an XLSX compatible with Biliometrix for its processing
-write_xlsx(db_filtered,file = 'db_full_text_large.xlsx')
+
+# Extracting only the papers ranked over 4. Following the same steps explained above. This papers are selected for the
+# QUALITATIVE ANALYSIS
+db_high_rank = db_abs_journals[FALSE,]  # This data frame will store the records whose journal is rated over 4
+journal_df <- journal_df[grepl(pattern = '^4.*$',x = journal_df$Rating, ignore.case = TRUE),] #Update the journal list with only those whose rating is over 4 and over.
+for (i in 1:nrow(journal_df))
+{
+  pattern <- as.character(journal_df[i,1])
+  matching_rows <- db_abs_journals[grepl(pattern = pattern,x = db_abs_journals$SO, ignore.case = TRUE),]
+  db_high_rank <- rbind(db_high_rank,matching_rows)
+}
+size_high_rank <- nrow(db_high_rank)
+write_xlsx(db_high_rank,file = paste('qualitative_analysis_',size_high_rank,'_records.xlsx'))
 
 
+
+
+#Print a summarized report on the screen for the information of the researcher.
 report <-  paste("**************************************************** \n",
 "RESULTS OF THE PROCESSING \n",
 "**************************************************** \n")
@@ -88,9 +115,12 @@ report <- paste0(report,'\n Resulting database ------------------------:   ',siz
 report <- paste0(report,'\n Deleted record (Filtered by AB, TI and DE) : - ',size_with_doi[1]-size_filtered[1])
 report <- paste0(report,'\n -----------------------------------------------------')
 report <- paste0(report,'\n Filtered database -------------------------:   ',size_filtered[1])
-report <- paste0(report,'\n Deleted from low-rank sources -------------: - ',size_filtered[1]-size_high_rank[1])
+report <- paste0(report,'\n Deleted not in ABS 2021 rating ------------: - ',size_filtered[1]-size_abs_journals[1])
 report <- paste0(report,'\n -----------------------------------------------------')
-report <- paste0(report,'\n Final sample ------------------------------:   ',size_high_rank[1])
+report <- paste0(report,'\n Records from ABS 2021 rating only ---------:   ',size_abs_journals[1])
+report <- paste0(report,'\n Delete records with rating below 4 --------: - ',size_abs_journals[1] - size_high_rank[1])
 report <- paste0(report,'\n -----------------------------------------------------')
+report <- paste0(report,'\n Records from ABS 2021 rating 4 and over ---:   ',size_high_rank[1])
+report <- paste0(report,'\n -----------------------------------------------------')
+report <- paste0(report,'\n FINAL SELECTION  --------------------------:   ',size_high_rank[1])
 cat(report)
-
