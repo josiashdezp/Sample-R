@@ -6,9 +6,14 @@ The first sample of code is an R script I actively used during my PhD studies. I
 
 Several steps are included according to my original needs:
 ----------------------------------------------------------
-Converting the files to a DataFrame and merging them
-Deleting duplicates
-Deleting records with no DOI
-Filtering the records to ensure their titles, keywords and abstracts actually contained the keywords used during the search of bibliography
-Filtering the records to obtain only papers from high-rating journals according to the ABS 2021 Journal Rating (provided from a csv file)
-Selecting a final sample of papers with their rating over 3 (i.e. 4 and 4*) 
+- Converting the files to a DataFrame and merging them
+
+- Deleting duplicates
+
+- Deleting records with no DOI
+
+- Filtering the records to ensure their titles, keywords and abstracts actually contained the keywords used during the search of bibliography
+
+- Filtering the records to obtain only papers from high-rating journals according to the ABS 2021 Journal Rating (provided from a csv file)
+
+- Selecting a final sample of papers with their rating over 3 (i.e. 4 and 4*) 
